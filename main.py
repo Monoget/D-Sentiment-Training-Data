@@ -36,7 +36,7 @@ def affective_score(text):
     return max(keyword_count, sentiment_score)
 
 
-# Function to highlight keywords in red in the Excel file
+# Function to highlight keywords in text (without color formatting)
 def highlight_keywords_in_text(text, keywords):
     # Initialize the list of chunks of text
     chunks = []
@@ -46,8 +46,8 @@ def highlight_keywords_in_text(text, keywords):
         for match in re.finditer(rf'\b{keyword}\b', text, re.IGNORECASE):
             # Add the part of the text before the match
             chunks.append(text[start:match.start()])
-            # Add the keyword (this is what we'll color)
-            chunks.append(f"{{{{{match.group(0)}}}}}")  # Mark keyword for later color application
+            # Add the keyword (this is what we'll mark)
+            chunks.append(f"{{{{{match.group(0)}}}}}")  # Mark keyword for later processing
             start = match.end()
     # Add any remaining part of the text after the last match
     chunks.append(text[start:])
@@ -101,30 +101,21 @@ scores_df.insert(0, 'Sl', range(1, len(scores_df) + 1))
 output_file_path = 'output/scored_reviews_highlighted.xlsx'
 scores_df.to_excel(output_file_path, index=False)
 
-# Open the saved file to apply text color formatting
+# Open the saved file to apply column width settings
 wb = load_workbook(output_file_path)
 ws = wb.active
 
-# Apply red text color to the specific keywords enclosed in curly braces
-for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=2, max_col=2):  # 'ReviewText' column
-    for cell in row:
-        cell_value = cell.value
-        start = 0
-        # Search for keywords enclosed in curly braces
-        while True:
-            start = cell_value.find('{{', start)
-            if start == -1:
-                break
-            end = cell_value.find('}}', start)
-            if end != -1:
-                keyword = cell_value[start+2:end]
-                # Apply red color to the keyword
-                for match in re.finditer(rf'\b{keyword}\b', cell_value, re.IGNORECASE):
-                    cell.font = Font(color="FF0000")  # Apply red color to the matched keyword
-                start = end + 2
-            else:
-                break
+# Set the column width
+ws.column_dimensions['B'].width = 50  # Set column B (Review Text) width to 500px
+for col in ['C', 'D', 'E', 'F', 'G']:  # Other columns (Sensory, Affective, Intellectual, Behavior, Recommend)
+    ws.column_dimensions[col].width = 13  # Set width of all other columns to 100px
 
+# Apply text wrapping for all columns except the first
+for col in ['B', 'C', 'D', 'E', 'F', 'G']:
+    for cell in ws[col]:
+        cell.alignment = cell.alignment.copy(wrap_text=True)
+
+# Save the formatted Excel file
 wb.save(output_file_path)
 
-print("Scores and highlighted reviews have been saved to", output_file_path)
+print("Scores and reviews with adjusted formatting have been saved to", output_file_path)
