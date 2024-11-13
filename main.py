@@ -18,7 +18,7 @@ SENSORY_KEYWORDS = {
 
 AFFECTIVE_KEYWORDS = {
     'positive': [
-        'Like', 'love', 'enjoy', 'delightful', 'pleased', 'happy', 'satisfied', 'excited', 'affectionate', 'grateful', 'content',
+        'Liked', 'love', 'enjoy', 'delightful', 'pleased', 'happy', 'satisfied', 'excited', 'affectionate', 'grateful', 'content',
         'joyful', 'passionate', 'thrilled', 'enthusiastic', 'appreciative', 'fond', 'cherish', 'admire', 'relieved', 'hopeful'
     ],
     'negative': [
@@ -63,7 +63,6 @@ RECOMMEND_KEYWORDS = {
     ]
 }
 
-
 # Scoring function for each category based on positive/negative keyword matching
 def keyword_score(text, keyword_dict):
     positive_count = sum(1 for word in keyword_dict['positive'] if re.search(rf'\b{word}\b', text, re.IGNORECASE))
@@ -77,40 +76,45 @@ def keyword_score(text, keyword_dict):
     else:
         return 2
 
-# Overall sentiment score using TextBlob for affective categories
-def affective_score(text):
-    keyword_count = keyword_score(text, AFFECTIVE_KEYWORDS)
-    polarity = TextBlob(text).sentiment.polarity
-    if polarity > 0.5:
-        sentiment_score = 3
-    elif polarity > 0:
-        sentiment_score = 2
-    else:
-        sentiment_score = 1
-    return max(keyword_count, sentiment_score)
-
-# Function to highlight keywords in text (without color formatting)
+# Function to highlight keywords in text with {} for positive and [] for negative
 def highlight_keywords_in_text(text, keywords):
-    chunks = []
-    start = 0
-    for keyword in keywords['positive'] + keywords['negative']:
-        for match in re.finditer(rf'\b{keyword}\b', text, re.IGNORECASE):
-            chunks.append(text[start:match.start()])
-            chunks.append(f"{{{{{match.group(0)}}}}}")  # Mark keyword for later processing
-            start = match.end()
-    chunks.append(text[start:])
-    return chunks
+    highlighted_text = text  # Start with the original text
+    offset = 0  # Track changes to string length as we add braces
+
+    # Ensure 'keywords' is structured as a dictionary with 'positive' and 'negative' categories
+    if not isinstance(keywords, dict):
+        print("Keywords should be passed as a dictionary with 'positive' and 'negative' keys.")
+        return text
+
+    # Loop through categories (positive and negative) and apply appropriate markers
+    for category, markers in [('positive', '{}'), ('negative', '[]')]:
+        if category not in keywords:
+            continue
+        for keyword in keywords[category]:
+            # Escape special characters in the keyword for regex
+            keyword_escaped = re.escape(keyword)
+
+            # Find all occurrences of the keyword (case-insensitive)
+            matches = list(re.finditer(rf'\b{keyword_escaped}\b', highlighted_text, re.IGNORECASE))
+
+            for match in matches:
+                start, end = match.start() + offset, match.end() + offset
+                # Apply the appropriate marker ({} or [])
+                highlighted_text = highlighted_text[:start] + markers.format(highlighted_text[start:end]) + highlighted_text[end:]
+                offset += len(markers) - 2  # Adjust offset for added markers ({} or [])
+
+    return highlighted_text
 
 # Main function to process each review and return detailed scoring breakdown
 def process_review(text):
     sensory = keyword_score(text, SENSORY_KEYWORDS)
-    affective = affective_score(text)
+    affective = keyword_score(text, AFFECTIVE_KEYWORDS)
     intellectual = keyword_score(text, INTELLECTUAL_KEYWORDS)
     behavior = keyword_score(text, BEHAVIOR_KEYWORDS)
     recommend = keyword_score(text, RECOMMEND_KEYWORDS)
 
     return {
-        "ReviewText": text,
+        "Review Text": highlight_keywords_in_text(text, SENSORY_KEYWORDS),
         "Sensory": sensory,
         "Affective": affective,
         "Intellectual": intellectual,
@@ -127,12 +131,8 @@ scores_list = []
 
 # Process each review
 for index, row in df.iterrows():
-    review_text = row['Review Text']  # Adjust 'ReviewText' to the actual column name for reviews
+    review_text = row['Review Text']  # Adjust 'Review Text' to the actual column name for reviews
     scores = process_review(review_text)
-
-    # Highlight the keywords and add the processed review
-    highlighted_review = highlight_keywords_in_text(review_text, SENSORY_KEYWORDS)
-    scores['Review Text'] = ' '.join(highlighted_review)  # Join the chunks back into a string
     scores_list.append(scores)
 
 # Convert scores to a DataFrame and reorder columns as requested
@@ -151,16 +151,16 @@ wb = load_workbook(output_file_path)
 ws = wb.active
 
 # Set the column width
-ws.column_dimensions['B'].width = 50  # Set column B (Review Text) width to 500px
+ws.column_dimensions['B'].width = 50  # Set column B (Review Text) width to 50 characters
 for col in ['C', 'D', 'E', 'F', 'G']:  # Other columns (Sensory, Affective, Intellectual, Behavior, Recommend)
-    ws.column_dimensions[col].width = 13  # Set width of all other columns to 100px
+    ws.column_dimensions[col].width = 13  # Set width of all other columns to 13 characters
 
 # Apply text wrapping for all columns except the first
-for col in ['B', 'C', 'D', 'E', 'F', 'G']:
-    for cell in ws[col]:
-        cell.alignment = cell.alignment.copy(wrap_text=True)
+for col in ws.columns:
+    for cell in col:
+        cell.alignment = cell.alignment.copy(wrapText=True)
 
-# Save the formatted Excel file
+# Save the workbook with formatting changes
 wb.save(output_file_path)
 
-print("Scores and reviews with adjusted formatting have been saved to", output_file_path)
+print(f"Processed file saved to: {output_file_path}")
