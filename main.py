@@ -1,8 +1,6 @@
 import pandas as pd
 import re
 from openpyxl import load_workbook
-from openpyxl.styles import Font
-from textblob import TextBlob
 
 # Define expanded keywords for each category
 SENSORY_KEYWORDS = {
