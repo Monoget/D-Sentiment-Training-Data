@@ -1,216 +1,138 @@
-# Review Scoring and Keyword Highlighting
+# Review Scoring and Keyword Highlighting Project
 
-## Project Description
+## Overview
 
-This project processes product or service reviews stored in an Excel file. The script reads reviews, analyzes them for keywords related to different categories (Sensory, Affective, Intellectual, Behavior, and Recommend), scores each review based on keyword frequency, and then saves the processed data to a new Excel file. The reviews are also highlighted with specific keywords, and the resulting file includes the scores for each category.
+This project processes reviews, scores them based on predefined keyword categories, highlights the keywords, and saves the results in a new Excel file. It can be used for analyzing textual reviews or feedback to extract sentiment or key themes using keyword-based scoring.
 
-### Features:
-- **Keyword Scoring**: Each review is analyzed for specific keywords related to sensory, affective, intellectual, behavioral, and recommendation-related terms. The script assigns scores based on keyword matches.
-- **Sentiment Analysis**: The script uses TextBlob to perform sentiment analysis for reviews that focus on emotional sentiment (affective category).
-- **Excel Output**: The results are saved into an Excel file with scores for each category and a column for the row number (Sl). Review text is highlighted for the identified keywords.
-- **Column Formatting**: The Excel output file has adjusted column widths and text wrapping.
+The goal is to:
+1. **Score reviews** based on predefined positive and negative keywords related to sensory, affective, intellectual, behavioral, and recommendation categories.
+2. **Highlight keywords** found within the review text to emphasize key points.
+3. **Save the output** to a new Excel file for easy analysis.
 
----
+## Table of Contents
 
-## Prerequisites
+1. [Project Overview](#overview)
+2. [Installation](#installation)
+3. [How It Works](#how-it-works)
+4. [Project Structure](#project-structure)
+5. [How to Use](#how-to-use)
+6. [View the Output](#view-the-output)
 
-To run the script, you need Python and several libraries installed on your system:
 
-### 1. **Python** (version 3.x):
-   - Download and install Python from the official website: https://www.python.org/downloads/
-   - Ensure that `python` is added to your system's PATH.
+## Installation
 
-### 2. **Required Libraries**:
-   - `pandas` for data manipulation
-   - `openpyxl` for handling Excel files
-   - `textblob` for sentiment analysis
-   - `re` (regular expressions) for keyword matching
-   
-   To install the required libraries, run:
+To run this project, you need Python and a few libraries installed. Follow these steps to set up the project:
 
-   ```bash
-   pip install pandas openpyxl textblob
-```
+1. Install Python (if you don’t already have it installed). You can download it from [python.org](https://www.python.org/).
 
-## Script Breakdown
-### 1. Imports
-```bash
-import pandas as pd
-import re
-from openpyxl import load_workbook
-from openpyxl.styles import Font
-from textblob import TextBlob
-```
- - pandas: For working with Excel files and data manipulation.
- - re: For using regular expressions to search and match keywords in text.
- - openpyxl: For reading, writing, and formatting Excel files.
- - TextBlob: For sentiment analysis.
+2. Install the required libraries by running the following command in your terminal:
 
-### 2. Keyword Categories
-```bash
-# Define keywords for each category
-SENSORY_KEYWORDS = ['sound', 'audio', 'voice', 'listen', 'hear', 'volume', 'tune']
-AFFECTIVE_KEYWORDS = ['love', 'like', 'enjoy', 'appreciate', 'emotion', 'sentiment', 'feel', 'feeling', 'affection']
-INTELLECTUAL_KEYWORDS = ['think', 'judge', 'considering', 'curiosity', 'evaluate', 'ponder', 'analyze', 'understand']
-BEHAVIOR_KEYWORDS = ['bought', 'buy', 'purchase', 'acquire', 'act', 'use', 'apply', 'bodily', 'do', 'try']
-RECOMMEND_KEYWORDS = ['recommend', 'suggest', 'advise', 'endorse', 'propose', 'encourage']
-```
-These lists contain keywords grouped into five categories that the script uses to score the reviews.
+    ```bash
+    pip install pandas openpyxl textblob
+    ```
 
-### 3. Keyword Matching Function
-```bash
-def keyword_score(text, keywords):
-    count = sum(1 for word in keywords if re.search(rf'\b{word}\b', text, re.IGNORECASE))
-    if count > 2:
-        return 3
-    elif count > 0:
-        return 2
-    else:
-        return 1
-```
- - This function checks how many times a keyword from a given category appears in a review.
- - It assigns a score based on the number of keyword matches:
-   - Score 3: More than 2 matches.
-   - Score 2: 1 or 2 matches.
-   - Score 1: No matches.
-   
-### 4. Sentiment Analysis for the Affective Category
-```bash
-def affective_score(text):
-    keyword_count = keyword_score(text, AFFECTIVE_KEYWORDS)
-    polarity = TextBlob(text).sentiment.polarity
-    if polarity > 0.5:
-        sentiment_score = 3
-    elif polarity > 0:
-        sentiment_score = 2
-    else:
-        sentiment_score = 1
-    return max(keyword_count, sentiment_score)
-```
+    These libraries are used for:
+    - **pandas**: For reading and writing Excel files.
+    - **openpyxl**: For manipulating Excel files, especially for formatting.
+    - **textblob**: For text analysis (optional but useful for other projects or text processing).
 
- - Affective Score is determined by the number of keyword matches in the AFFECTIVE_KEYWORDS list, combined with the sentiment polarity calculated by TextBlob:
-   - Polarity > 0.5 = positive sentiment → Score 3.
-   - Polarity between 0 and 0.5 = neutral positive sentiment → Score 2.
-   - Polarity < 0 = negative sentiment → Score 1.
- - The function returns the higher score between keyword count and sentiment analysis.
+## How It Works
 
-### 5. Highlighting Keywords in Reviews
-```bash
-def highlight_keywords_in_text(text, keywords):
-    chunks = []
-    start = 0
-    for keyword in keywords:
-        for match in re.finditer(rf'\b{keyword}\b', text, re.IGNORECASE):
-            chunks.append(text[start:match.start()])
-            chunks.append(f"{{{{{match.group(0)}}}}}")
-            start = match.end()
-    chunks.append(text[start:])
-    return chunks
-```
- - This function highlights the keywords by wrapping them in double curly braces `({{keyword}})`.
- - It splits the review text into chunks, with keywords marked separately for easy identification.
+### 1. Loading Data
+The script starts by reading an Excel file containing a column of review text. It expects the reviews to be located in a column named `Review Text`. This column will be processed to extract information based on the keyword matching.
 
-### 6. Processing Reviews
-```bash
-def process_review(text):
-    sensory = keyword_score(text, SENSORY_KEYWORDS)
-    affective = affective_score(text)
-    intellectual = keyword_score(text, INTELLECTUAL_KEYWORDS)
-    behavior = keyword_score(text, BEHAVIOR_KEYWORDS)
-    recommend = keyword_score(text, RECOMMEND_KEYWORDS)
+### 2. Defining Keyword Categories
+There are predefined sets of **positive** and **negative** keywords for five different categories:
+- **Sensory**: Keywords related to sensory experience (e.g., "clear", "smooth").
+- **Affective**: Keywords related to emotional responses (e.g., "happy", "disappointed").
+- **Intellectual**: Keywords related to intellectual qualities (e.g., "insightful", "shallow").
+- **Behavior**: Keywords related to behavior or actions (e.g., "effective", "annoying").
+- **Recommend**: Keywords related to recommendations (e.g., "would recommend", "discourage").
 
-    return {
-        "ReviewText": text,
-        "Sensory": sensory,
-        "Affective": affective,
-        "Intellectual": intellectual,
-        "Behavior": behavior,
-        "Recommend": recommend
-    }
-```
- - This function processes each review text, calculates scores for each category, and returns a dictionary containing the scores for `Sensory`, `Affective`, `Intellectual`, `Behavior`, and `Recommend`.
+### 3. Scoring the Reviews
+For each review:
+- The presence of **positive** and **negative** keywords is checked in the review text.
+- A score is assigned based on the following logic:
+  - **3 points** for each positive keyword found.
+  - **1 point** for each negative keyword found.
+  - **2 points** if neither positive nor negative keywords are found (neutral score).
 
-## 7. Loading and Processing the Excel Data
+The review score is calculated for each category separately based on the number of matching keywords.
+
+### 4. Highlighting Keywords in the Review
+The keywords found in the review are highlighted:
+- **Positive keywords** are highlighted using curly braces `{}`.
+- **Negative keywords** are highlighted using square brackets `[]`.
+
+### 5. Saving the Output
+The final output is saved in a new Excel file with the following columns:
+- **Sl (Serial number)**: A unique number for each review.
+- **Review Text**: The review text with highlighted keywords.
+- **Sensory**: The score for the sensory category.
+- **Affective**: The score for the affective category.
+- **Intellectual**: The score for the intellectual category.
+- **Behavior**: The score for the behavior category.
+- **Recommend**: The score for the recommendation category.
+
+## Project Structure
+
+The project folder should look like this:
+
+ ├── input/  
+ │ └── Training data_Coding.xlsx # Input file containing reviews  
+ ├── output/   
+ │ └── scored_reviews_highlighted.xlsx # Output file with scores and highlighted keywords   
+ ├── main.py # Python script that processes the reviews   
+ └── README.md # This file
+ 
+
+### `script.py`
+This is the Python script that processes the review data, calculates the scores, highlights the keywords, and saves the output in the `output` folder.
+
+### `Training data_Coding.xlsx`
+This file contains the reviews that you want to analyze. The script assumes the reviews are stored in a column called `Review Text`. Ensure your input file follows this format.
+
+### `scored_reviews_highlighted.xlsx`
+This is the output file where processed reviews are saved. It will include:
+- The original review text with highlighted keywords.
+- Scores for each of the five categories.
+
+## How to Use
+
+### 1. Prepare Input File
+Ensure your input Excel file is in the `input/` folder and follows this format:
+
+| Review Text                         |
+|--------------------------------------|
+| I love the clear and smooth sound.   |
+| The service was frustratingly slow.  |
+| Insightful and well-structured.      |
+| Would not recommend due to poor quality. |
+
+### 2. Run the Script
+
+Run the following command to start processing:
 
 ```bash
-input_file_path = 'input/Training data_Coding.xlsx'
-df = pd.read_excel(input_file_path, header=2)
+python script.py
 ```
+## View the Output
 
- - The reviews are loaded from an Excel file located at `input/Training data_Coding.xlsx`.
- - The header is located at the third row `(header=2)`.
+After running the script, the processed output will be saved in the `output/` directory. You can view the results in the `scored_reviews_highlighted.xlsx` file. This file will contain the following:
 
-## 8. Processing Each Review and Saving Results
+- **Review Text**: The original review text with highlighted keywords (positive keywords are enclosed in `{}` and negative keywords are enclosed in `[]`).
+- **Sensory**: A score indicating the sentiment of the sensory-related words in the review.
+- **Affective**: A score indicating the sentiment of the emotional-related words in the review.
+- **Intellectual**: A score indicating the sentiment of the intellectual-related words in the review.
+- **Behavior**: A score indicating the sentiment of the behavioral-related words in the review.
+- **Recommend**: A score indicating the sentiment of the recommendation-related words in the review.
 
-```bash
-scores_list = []
-
-for index, row in df.iterrows():
-    review_text = row['Review Text']
-    scores = process_review(review_text)
-
-    highlighted_review = highlight_keywords_in_text(review_text,
-                                                     SENSORY_KEYWORDS + AFFECTIVE_KEYWORDS + INTELLECTUAL_KEYWORDS + BEHAVIOR_KEYWORDS + RECOMMEND_KEYWORDS)
-    scores['Review Text'] = ' '.join(highlighted_review)
-    scores_list.append(scores)
-
-scores_df = pd.DataFrame(scores_list)
-scores_df = scores_df[['Review Text', 'Sensory', 'Affective', 'Intellectual', 'Behavior', 'Recommend']]
-```
-
- - This loop iterates over all reviews, processes each one, scores them, highlights keywords, and stores the results in `scores_list`.
- - The results are stored in a DataFrame with columns for the review text and the scores.
-
-## 9. Column Formatting
-```bash
-scores_df.insert(0, 'Sl', range(1, len(scores_df) + 1))
-```
- - Adds a "Sl" column to number the rows in the output Excel file.
+You can open the `scored_reviews_highlighted.xlsx` file using any spreadsheet application (such as Microsoft Excel or Google Sheets) to examine the results.
 
 
-## 10. Saving the Output Excel File
-```bash
-output_file_path = 'output/scored_reviews_highlighted.xlsx'
-scores_df.to_excel(output_file_path, index=False)
-```
- - The results are saved into a new Excel file at `output/scored_reviews_highlighted.xlsx`.
-
-## 11. Formatting the Excel File
-```bash
-wb = load_workbook(output_file_path)
-ws = wb.active
-
-for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=2, max_col=2):
-    for cell in row:
-        cell_value = cell.value
-        start = 0
-        while True:
-            start = cell_value.find('{{', start)
-            if start == -1:
-                break
-            end = cell_value.find('}}', start)
-            if end != -1:
-                keyword = cell_value[start+2:end]
-                for match in re.finditer(rf'\b{keyword}\b', cell_value, re.IGNORECASE):
-                    cell.font = Font(color="FF0000")
-                start = end + 2
-            else:
-                break
-
-wb.save(output_file_path)
-```
-
- - This block loads the generated Excel file, highlights the keywords (using red font), and saves the updated file.
-
-## 12. Final Output
-```bash
-print("Scores and highlighted reviews have been saved to", output_file_path)
-```
-
-- Prints a message indicating that the process is complete and the file has been saved.
-
-
-## Run the Program
-```bash
-python main.py
-```
+| Sl  | Review Text                                   | Sensory | Affective | Intellectual | Behavior | Recommend |
+|-----|-----------------------------------------------|---------|-----------|--------------|----------|-----------|
+| 1   | I {love} the {clear} and {smooth} sound.      | 3       | 2         | 2            | 2        | 2         |
+| 2   | The service was [frustratingly] slow.         | 2       | 1         | 2            | 1        | 2         |
+| 3   | {Insightful} and well-structured.             | 2       | 3         | 3            | 2        | 2         |
+| 4   | Would not {recommend} due to poor quality.    | 2       | 2         | 2            | 1        | 1         |
