@@ -2,26 +2,80 @@ import pandas as pd
 import re
 from openpyxl import load_workbook
 from openpyxl.styles import Font
-from textblob import TextBlob  # This is for sentiment analysis, added per your request.
+from textblob import TextBlob
 
-# Define keywords for each category
-SENSORY_KEYWORDS = ['sound', 'audio', 'voice', 'listen', 'hear', 'volume', 'tune']
-AFFECTIVE_KEYWORDS = ['love', 'like', 'enjoy', 'appreciate', 'emotion', 'sentiment', 'feel', 'feeling', 'affection']
-INTELLECTUAL_KEYWORDS = ['think', 'judge', 'considering', 'curiosity', 'evaluate', 'ponder', 'analyze', 'understand']
-BEHAVIOR_KEYWORDS = ['bought', 'buy', 'purchase', 'acquire', 'act', 'use', 'apply', 'bodily', 'do', 'try']
-RECOMMEND_KEYWORDS = ['recommend', 'suggest', 'advise', 'endorse', 'propose', 'encourage']
+# Define expanded keywords for each category
+SENSORY_KEYWORDS = {
+    'positive': [
+        'clear', 'crisp', 'pleasant', 'soothing', 'melodious', 'engaging', 'distinct', 'vivid', 'vibrant', 'sharp',
+        'harmonious', 'resonant', 'comforting', 'smooth', 'appealing', 'soft', 'pure', 'clean', 'refreshing', 'symphonic'
+    ],
+    'negative': [
+        'noisy', 'distorted', 'unpleasant', 'dull', 'muffled', 'grating', 'harsh', 'blurry', 'fuzzy', 'jarring',
+        'disorienting', 'irritating', 'loud', 'abrasive', 'annoying', 'clashing', 'rough', 'static', 'smudged', 'glaring'
+    ]
+}
 
-# Scoring function for each category based on keyword matching
-def keyword_score(text, keywords):
-    count = sum(1 for word in keywords if re.search(rf'\b{word}\b', text, re.IGNORECASE))
-    # Map the count to a score from 1 to 3
-    if count > 2:
+AFFECTIVE_KEYWORDS = {
+    'positive': [
+        'Like', 'love', 'enjoy', 'delightful', 'pleased', 'happy', 'satisfied', 'excited', 'affectionate', 'grateful', 'content',
+        'joyful', 'passionate', 'thrilled', 'enthusiastic', 'appreciative', 'fond', 'cherish', 'admire', 'relieved', 'hopeful'
+    ],
+    'negative': [
+        'dislike', 'hate', 'disappointing', 'upset', 'annoyed', 'frustrated', 'angry', 'sad', 'bored', 'apathetic',
+        'disheartened', 'irritated', 'resentful', 'dismayed', 'displeased', 'discouraged', 'unhappy', 'regretful', 'dejected', 'miserable'
+    ]
+}
+
+INTELLECTUAL_KEYWORDS = {
+    'positive': [
+        'insightful', 'thought-provoking', 'curious', 'analytical', 'wise', 'logical', 'informed', 'perceptive', 'intelligent',
+        'enlightening', 'smart', 'strategic', 'astute', 'knowledgeable', 'reflective', 'cerebral', 'scholarly', 'innovative',
+        'rational', 'profound'
+    ],
+    'negative': [
+        'confused', 'misleading', 'uninformed', 'illogical', 'shallow', 'ignorant', 'unclear', 'vague', 'dense', 'superficial',
+        'naive', 'simplistic', 'irrational', 'nonsensical', 'pointless', 'absurd', 'disoriented', 'misunderstood', 'foggy', 'convoluted'
+    ]
+}
+
+BEHAVIOR_KEYWORDS = {
+    'positive': [
+        'effective', 'useful', 'helpful', 'successful', 'productive', 'practical', 'beneficial', 'efficient', 'valuable',
+        'engaging', 'constructive', 'proactive', 'goal-oriented', 'impactful', 'empowering', 'positive', 'meaningful', 'focused',
+        'reliable', 'responsive'
+    ],
+    'negative': [
+        'ineffective', 'useless', 'wasteful', 'unsuccessful', 'inefficient', 'frustrating', 'difficult', 'impractical', 'unproductive',
+        'irrelevant', 'complicated', 'cumbersome', 'slow', 'misguided', 'dysfunctional', 'obstructive', 'exhausting', 'taxing',
+        'draining', 'tedious'
+    ]
+}
+
+RECOMMEND_KEYWORDS = {
+    'positive': [
+        'highly', 'strongly', 'eagerly', 'confidently', 'enthusiastically', 'favorably', 'encouragingly', 'endorse', 'back',
+        'support', 'vouch', 'praise', 'commend', 'applaud', 'approve', 'advocate', 'affirm', 'acclaim', 'second', 'uphold'
+    ],
+    'negative': [
+        'wouldn’t', 'don’t', 'avoid', 'discourage', 'hesitate', 'doubt', 'reluctant', 'regret', 'warn', 'disapprove',
+        'advise against', 'criticize', 'oppose', 'reject', 'caution', 'rebuke', 'dismiss', 'deter', 'withhold', 'restrain'
+    ]
+}
+
+
+# Scoring function for each category based on positive/negative keyword matching
+def keyword_score(text, keyword_dict):
+    positive_count = sum(1 for word in keyword_dict['positive'] if re.search(rf'\b{word}\b', text, re.IGNORECASE))
+    negative_count = sum(1 for word in keyword_dict['negative'] if re.search(rf'\b{word}\b', text, re.IGNORECASE))
+
+    # Assign scores: positive=3, negative=1, none found=2
+    if positive_count > 0:
         return 3
-    elif count > 0:
-        return 2
-    else:
+    elif negative_count > 0:
         return 1
-
+    else:
+        return 2
 
 # Overall sentiment score using TextBlob for affective categories
 def affective_score(text):
@@ -35,24 +89,17 @@ def affective_score(text):
         sentiment_score = 1
     return max(keyword_count, sentiment_score)
 
-
 # Function to highlight keywords in text (without color formatting)
 def highlight_keywords_in_text(text, keywords):
-    # Initialize the list of chunks of text
     chunks = []
     start = 0
-    # Loop through the text to find keywords
-    for keyword in keywords:
+    for keyword in keywords['positive'] + keywords['negative']:
         for match in re.finditer(rf'\b{keyword}\b', text, re.IGNORECASE):
-            # Add the part of the text before the match
             chunks.append(text[start:match.start()])
-            # Add the keyword (this is what we'll mark)
             chunks.append(f"{{{{{match.group(0)}}}}}")  # Mark keyword for later processing
             start = match.end()
-    # Add any remaining part of the text after the last match
     chunks.append(text[start:])
     return chunks
-
 
 # Main function to process each review and return detailed scoring breakdown
 def process_review(text):
@@ -71,7 +118,6 @@ def process_review(text):
         "Recommend": recommend
     }
 
-
 # Load data from the Excel file
 input_file_path = 'input/Training data_Coding.xlsx'
 df = pd.read_excel(input_file_path, header=2)  # Header is in row 3
@@ -79,14 +125,13 @@ df = pd.read_excel(input_file_path, header=2)  # Header is in row 3
 # Initialize a list to store the scores for each review
 scores_list = []
 
-# Process each review starting from row 4
+# Process each review
 for index, row in df.iterrows():
     review_text = row['Review Text']  # Adjust 'ReviewText' to the actual column name for reviews
     scores = process_review(review_text)
 
     # Highlight the keywords and add the processed review
-    highlighted_review = highlight_keywords_in_text(review_text,
-                                                     SENSORY_KEYWORDS + AFFECTIVE_KEYWORDS + INTELLECTUAL_KEYWORDS + BEHAVIOR_KEYWORDS + RECOMMEND_KEYWORDS)
+    highlighted_review = highlight_keywords_in_text(review_text, SENSORY_KEYWORDS)
     scores['Review Text'] = ' '.join(highlighted_review)  # Join the chunks back into a string
     scores_list.append(scores)
 
